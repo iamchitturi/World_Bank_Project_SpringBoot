@@ -31,8 +31,6 @@ public class AccountController {
 
         return accountService.deposit(accountNumber, amount);
     }
-
-
     @PostMapping("/withdraw")
     public Account withdraw(
             @RequestParam String accountNumber,

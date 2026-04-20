@@ -12,9 +12,7 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(ResourceAlreadyExistsException.class)
     public ResponseEntity<Object> handleAlreadyExists(
             ResourceAlreadyExistsException ex) {
-
         Map<String,Object> response = new HashMap<>();
-
         response.put("message", ex.getMessage());
         response.put("status", 400);
         response.put("time", LocalDateTime.now());
