@@ -1,30 +1,42 @@
 package com.bank.exception;
 
+import com.bank.api.ErrorResponse;
 import java.time.LocalDateTime;
-import java.util.HashMap;
-import java.util.Map;
-
+import java.util.stream.Collectors;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.*;
+import org.springframework.web.bind.MethodArgumentNotValidException;
+import org.springframework.web.bind.annotation.ExceptionHandler;
+import org.springframework.web.bind.annotation.RestControllerAdvice;
 
 @RestControllerAdvice
 public class GlobalExceptionHandler {
 
-    @ExceptionHandler(RuntimeException.class)
-    public ResponseEntity<Object> handleError(
-            RuntimeException ex){
-
-        Map<String,Object> error =
-                new HashMap<>();
-
-        error.put("message", ex.getMessage());
-        error.put("status", 400);
-        error.put("time", LocalDateTime.now());
+    @ExceptionHandler(MethodArgumentNotValidException.class)
+    public ResponseEntity<ErrorResponse> handleValidation(MethodArgumentNotValidException ex) {
+        String message = ex.getBindingResult().getFieldErrors().stream()
+                .map(err -> err.getField() + ": " + err.getDefaultMessage())
+                .collect(Collectors.joining(", "));
 
         return new ResponseEntity<>(
-                error,
-                HttpStatus.BAD_REQUEST);
+                ErrorResponse.builder()
+                        .code("VALIDATION_ERROR")
+                        .message(message)
+                        .timestamp(LocalDateTime.now())
+                        .build(),
+                HttpStatus.BAD_REQUEST
+        );
     }
 
+    @ExceptionHandler(RuntimeException.class)
+    public ResponseEntity<ErrorResponse> handleError(RuntimeException ex) {
+        return new ResponseEntity<>(
+                ErrorResponse.builder()
+                        .code("BUSINESS_RULE_VIOLATION")
+                        .message(ex.getMessage())
+                        .timestamp(LocalDateTime.now())
+                        .build(),
+                HttpStatus.BAD_REQUEST
+        );
+    }
 }
