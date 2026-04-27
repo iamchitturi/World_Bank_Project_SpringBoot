@@ -1,0 +1,25 @@
+target/
+*.class
+*.jar
+*.war
+*.ear
+
+# Maven wrapper
+.mvn/wrapper/maven-wrapper.jar
+
+# IDE files
+.idea/
+*.iml
+.eclipse/
+.classpath
+.project
+.settings/
+*.ipr
+*.iws
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Env files (real credentials)
+.env
