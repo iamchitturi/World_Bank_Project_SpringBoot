@@ -1,56 +1,46 @@
 package com.bank.entity;
 
-import jakarta.persistence.*;
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.GenerationType;
+import jakarta.persistence.Id;
+import jakarta.persistence.Table;
+import jakarta.persistence.UniqueConstraint;
+import jakarta.persistence.Version;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
-import lombok.Data;
+import lombok.Getter;
+import lombok.Setter;
 
-@Data
+@Getter
+@Setter
 @Entity
+@Table(name = "accounts", uniqueConstraints = {
+        @UniqueConstraint(name = "uk_account_number", columnNames = "account_number"),
+        @UniqueConstraint(name = "uk_user_id", columnNames = "user_id")
+})
 public class Account {
-	@NotBlank(message="Account number required")
-	private String accountNumber;
 
-	@NotNull
-	private Long userId;
-
-	@NotBlank(message="Name required")
-	private String name;
-
-    public Long getId() {
-		return id;
-	}
-	public void setId(Long id) {
-		this.id = id;
-	}
-	public String getAccountNumber() {
-		return accountNumber;
-	}
-	public void setAccountNumber(String accountNumber) {
-		this.accountNumber = accountNumber;
-	}
-	
-	public double getBalance() {
-		return balance;
-	}
-	public void setBalance(double balance) {
-		this.balance = balance;
-	}
-	@Id
+    @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
-    public Long getUserId() {
-		return userId;
-	}
-	public void setUserId(Long userId) {
-		this.userId = userId;
-	}
-	public String getName() {
-		return name;
-	}
-	public void setName(String name) {
-		this.name = name;
-	}
-	private double balance;
 
+    @NotBlank(message = "Account number required")
+    @Column(name = "account_number", nullable = false, unique = true)
+    private String accountNumber;
+
+    @NotNull
+    @Column(name = "user_id", nullable = false, unique = true)
+    private Long userId;
+
+    @NotBlank(message = "Name required")
+    @Column(nullable = false)
+    private String name;
+
+    @Column(nullable = false)
+    private double balance;
+
+    @Version
+    private Long version;
 }
