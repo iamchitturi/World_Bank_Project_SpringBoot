@@ -1,7 +1,9 @@
 package com.bank.exception;
 
 import java.time.LocalDateTime;
-import java.util.*;
+import java.util.HashMap;
+import java.util.Map;
+
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -9,15 +11,20 @@ import org.springframework.web.bind.annotation.*;
 @RestControllerAdvice
 public class GlobalExceptionHandler {
 
-    @ExceptionHandler(ResourceAlreadyExistsException.class)
-    public ResponseEntity<Object> handleAlreadyExists(
-            ResourceAlreadyExistsException ex) {
-        Map<String,Object> response = new HashMap<>();
-        response.put("message", ex.getMessage());
-        response.put("status", 400);
-        response.put("time", LocalDateTime.now());
+    @ExceptionHandler(RuntimeException.class)
+    public ResponseEntity<Object> handleError(
+            RuntimeException ex){
 
-        return new ResponseEntity<>(response, HttpStatus.BAD_REQUEST);
+        Map<String,Object> error =
+                new HashMap<>();
+
+        error.put("message", ex.getMessage());
+        error.put("status", 400);
+        error.put("time", LocalDateTime.now());
+
+        return new ResponseEntity<>(
+                error,
+                HttpStatus.BAD_REQUEST);
     }
 
 }

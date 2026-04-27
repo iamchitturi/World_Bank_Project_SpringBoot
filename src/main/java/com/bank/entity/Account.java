@@ -1,11 +1,21 @@
 package com.bank.entity;
 
 import jakarta.persistence.*;
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
 import lombok.Data;
 
 @Data
 @Entity
 public class Account {
+	@NotBlank(message="Account number required")
+	private String accountNumber;
+
+	@NotNull
+	private Long userId;
+
+	@NotBlank(message="Name required")
+	private String name;
 
     public Long getId() {
 		return id;
@@ -19,18 +29,7 @@ public class Account {
 	public void setAccountNumber(String accountNumber) {
 		this.accountNumber = accountNumber;
 	}
-	public String getUserId() {
-		return userId;
-	}
-	public void setUserId(String userId) {
-		this.userId = userId;
-	}
-	public String getName() {
-		return name;
-	}
-	public void setName(String name) {
-		this.name = name;
-	}
+	
 	public double getBalance() {
 		return balance;
 	}
@@ -40,14 +39,18 @@ public class Account {
 	@Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
-
-    @Column(unique = true)
-    private String accountNumber;
-
-    @Column(unique = true)
-    private String userId;
-
-    private String name;
-    private double balance;
+    public Long getUserId() {
+		return userId;
+	}
+	public void setUserId(Long userId) {
+		this.userId = userId;
+	}
+	public String getName() {
+		return name;
+	}
+	public void setName(String name) {
+		this.name = name;
+	}
+	private double balance;
 
 }
