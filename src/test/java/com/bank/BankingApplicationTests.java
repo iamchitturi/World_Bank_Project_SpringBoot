@@ -1,4 +1,4 @@
-package com.example.banking;
+package com.bank;
 
 import org.junit.jupiter.api.Test;
 
