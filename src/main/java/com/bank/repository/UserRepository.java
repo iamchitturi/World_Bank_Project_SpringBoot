@@ -1,11 +1,10 @@
 package com.bank.repository;
 
-import org.springframework.data.jpa.repository.JpaRepository;
 import com.bank.entity.User;
+import java.util.Optional;
+import org.springframework.data.jpa.repository.JpaRepository;
 
 public interface UserRepository extends JpaRepository<User, Long> {
 
-    User findByName(String Name);
-	User findByEmail(String email);
-
+    Optional<User> findByEmail(String email);
 }
