@@ -1,11 +1,13 @@
 package com.bank.controller;
 
 import com.bank.api.ApiResponse;
+import com.bank.dto.CreateAccountDTO;
 import com.bank.dto.TransferDTO;
 import com.bank.entity.Account;
 import com.bank.service.AccountService;
 import com.bank.service.TransactionService;
 import jakarta.validation.Valid;
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.List;
 import org.springframework.data.domain.Page;
@@ -47,7 +49,7 @@ public class AccountController {
     }
 
     @GetMapping("/interest/{accountNumber}")
-    public ApiResponse<Double> interest(@PathVariable String accountNumber) {
+    public ApiResponse<BigDecimal> interest(@PathVariable String accountNumber) {
         Account acc = accountService.getAccount(accountNumber);
         return ok(accountService.calculateInterest(acc.getBalance()), "Interest calculated");
     }
@@ -74,22 +76,22 @@ public class AccountController {
     }
 
     @PostMapping("/create")
-    public ApiResponse<Account> createAccount(@Valid @RequestBody Account account) {
-        return ok(accountService.createAccount(account), "Account created");
+    public ApiResponse<Account> createAccount(@Valid @RequestBody CreateAccountDTO dto) {
+        return ok(accountService.createAccount(dto), "Account created");
     }
 
     @GetMapping("/balance/{accountNumber}")
-    public ApiResponse<Double> getBalance(@PathVariable String accountNumber) {
+    public ApiResponse<BigDecimal> getBalance(@PathVariable String accountNumber) {
         return ok(accountService.checkBalance(accountNumber), "Balance fetched");
     }
 
     @PostMapping("/deposit")
-    public ApiResponse<Account> deposit(@RequestParam String accountNumber, @RequestParam double amount) {
+    public ApiResponse<Account> deposit(@RequestParam String accountNumber, @RequestParam BigDecimal amount) {
         return ok(accountService.deposit(accountNumber, amount), "Deposit successful");
     }
 
     @PostMapping("/withdraw")
-    public ApiResponse<Account> withdraw(@RequestParam String accountNumber, @RequestParam double amount) {
+    public ApiResponse<Account> withdraw(@RequestParam String accountNumber, @RequestParam BigDecimal amount) {
         return ok(accountService.withdraw(accountNumber, amount), "Withdraw successful");
     }
 

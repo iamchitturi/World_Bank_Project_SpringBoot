@@ -1,6 +1,7 @@
 package com.bank.service;
 
 import com.bank.repository.ReportRepository;
+import java.math.BigDecimal;
 import org.springframework.stereotype.Service;
 
 @Service
@@ -12,7 +13,8 @@ public class ReportService {
         this.reportRepository = reportRepository;
     }
 
-    public Double totalBalance() {
+    public BigDecimal totalBalance() {
         return reportRepository.totalBalance();
     }
 }
+

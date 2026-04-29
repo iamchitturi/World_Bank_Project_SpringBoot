@@ -2,6 +2,7 @@ package com.bank.controller;
 
 import com.bank.api.ApiResponse;
 import com.bank.service.ReportService;
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.Map;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -19,8 +20,8 @@ public class ReportController {
     }
 
     @GetMapping("/total-balance")
-    public ApiResponse<Map<String, Double>> totalBalance() {
-        return ApiResponse.<Map<String, Double>>builder()
+    public ApiResponse<Map<String, BigDecimal>> totalBalance() {
+        return ApiResponse.<Map<String, BigDecimal>>builder()
                 .success(true)
                 .message("Total balance report")
                 .data(Map.of("totalBalance", reportService.totalBalance()))
@@ -28,3 +29,4 @@ public class ReportController {
                 .build();
     }
 }
+

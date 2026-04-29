@@ -2,8 +2,12 @@ package com.bank.service;
 
 import com.bank.entity.Account;
 import com.bank.entity.Transaction;
+import com.bank.exception.InsufficientBalanceException;
+import com.bank.exception.InvalidOperationException;
+import com.bank.exception.ResourceNotFoundException;
 import com.bank.repository.AccountRepository;
 import com.bank.repository.TransactionRepository;
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.List;
 import org.slf4j.Logger;
@@ -25,14 +29,14 @@ public class TransactionService {
     }
 
     @Transactional
-    public String transfer(String fromAcc, String toAcc, double amount, String requestId) {
+    public String transfer(String fromAcc, String toAcc, BigDecimal amount, String requestId) {
 
-        if (amount <= 0) {
-            throw new RuntimeException("Amount must be greater than 0");
+        if (amount.compareTo(BigDecimal.ZERO) <= 0) {
+            throw new InvalidOperationException("Amount must be greater than 0");
         }
 
         if (fromAcc.equals(toAcc)) {
-            throw new RuntimeException("Self transfer is not allowed");
+            throw new InvalidOperationException("Self transfer is not allowed");
         }
 
         if (transactionRepository.findByRequestId(requestId).isPresent()) {
@@ -40,17 +44,17 @@ public class TransactionService {
         }
 
         Account sender = accountRepository.findByAccountNumber(fromAcc)
-                .orElseThrow(() -> new RuntimeException("Sender account not found"));
+                .orElseThrow(() -> new ResourceNotFoundException("Sender account not found"));
 
         Account receiver = accountRepository.findByAccountNumber(toAcc)
-                .orElseThrow(() -> new RuntimeException("Receiver account not found"));
+                .orElseThrow(() -> new ResourceNotFoundException("Receiver account not found"));
 
-        if (sender.getBalance() < amount) {
-            throw new RuntimeException("Insufficient balance");
+        if (sender.getBalance().compareTo(amount) < 0) {
+            throw new InsufficientBalanceException("Insufficient balance");
         }
 
-        sender.setBalance(sender.getBalance() - amount);
-        receiver.setBalance(receiver.getBalance() + amount);
+        sender.setBalance(sender.getBalance().subtract(amount));
+        receiver.setBalance(receiver.getBalance().add(amount));
 
         accountRepository.save(sender);
         accountRepository.save(receiver);
