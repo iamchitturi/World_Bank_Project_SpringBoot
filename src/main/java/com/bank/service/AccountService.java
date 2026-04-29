@@ -2,6 +2,7 @@ package com.bank.service;
 
 import com.bank.dto.CreateAccountDTO;
 import com.bank.entity.Account;
+import com.bank.entity.User;
 import com.bank.exception.InsufficientBalanceException;
 import com.bank.exception.InvalidOperationException;
 import com.bank.exception.ResourceAlreadyExistsException;
@@ -17,6 +18,8 @@ import org.springframework.dao.OptimisticLockingFailureException;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -32,6 +35,36 @@ public class AccountService {
     public AccountService(AccountRepository accountRepository, UserRepository userRepository) {
         this.accountRepository = accountRepository;
         this.userRepository = userRepository;
+    }
+
+    /**
+     * Get the currently authenticated user's account.
+     */
+    public Account getMyAccount() {
+        User user = getCurrentUser();
+        return accountRepository.findByUserId(user.getId())
+                .orElseThrow(() -> new ResourceNotFoundException("No account found for current user"));
+    }
+
+    /**
+     * Ensure the account belongs to the current user (or user is ADMIN).
+     */
+    public void enforceOwnership(String accountNumber) {
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        if (auth.getAuthorities().stream().anyMatch(a -> a.getAuthority().equals("ROLE_ADMIN"))) {
+            return; // Admin can access any account
+        }
+        User user = getCurrentUser();
+        Account acc = getAccount(accountNumber);
+        if (!acc.getUserId().equals(user.getId())) {
+            throw new InvalidOperationException("Access denied: you can only access your own account");
+        }
+    }
+
+    private User getCurrentUser() {
+        String email = SecurityContextHolder.getContext().getAuthentication().getName();
+        return userRepository.findByEmail(email)
+                .orElseThrow(() -> new ResourceNotFoundException("User not found"));
     }
 
     public Page<Account> getAccountsWithPagination(int page, int size) {

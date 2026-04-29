@@ -41,8 +41,17 @@ public class SecurityConfig {
                         .accessDeniedHandler(restAuthHandlers))
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
-                        .requestMatchers("/api/v1/auth/**", "/v3/api-docs/**", "/swagger-ui/**", "/actuator/health", "/error").permitAll()
+                        // Static UI + Swagger + Auth
+                        .requestMatchers("/", "/*.html", "/css/**", "/js/**", "/images/**", "/favicon.ico").permitAll()
+                        .requestMatchers("/api/v1/auth/login", "/api/v1/auth/register").permitAll()
+                        .requestMatchers("/v3/api-docs/**", "/swagger-ui/**", "/actuator/health", "/error").permitAll()
+                        // Admin-only endpoints
+                        .requestMatchers("/api/v1/account/all", "/api/v1/account/page/**").hasRole("ADMIN")
+                        .requestMatchers("/api/v1/account/create").hasRole("ADMIN")
                         .requestMatchers("/api/v1/account/delete/**").hasRole("ADMIN")
+                        .requestMatchers("/api/v1/audit/**").hasRole("ADMIN")
+                        .requestMatchers("/api/v1/reports/**").hasRole("ADMIN")
+                        // Everything else requires authentication (ownership checked in service)
                         .anyRequest().authenticated())
                 .authenticationProvider(authenticationProvider())
                 .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);

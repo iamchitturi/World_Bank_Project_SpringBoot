@@ -4,17 +4,23 @@ import com.bank.api.ApiResponse;
 import com.bank.dto.LoginRequest;
 import com.bank.dto.LoginResponse;
 import com.bank.dto.RegisterRequest;
+import com.bank.dto.UserProfileDTO;
 import com.bank.entity.User;
 import com.bank.exception.ResourceAlreadyExistsException;
+import com.bank.exception.ResourceNotFoundException;
 import com.bank.repository.UserRepository;
 import com.bank.security.JwtService;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import java.time.LocalDateTime;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -22,6 +28,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 @RestController
 @RequestMapping("/api/v1/auth")
+@Tag(name = "Authentication", description = "Login, register, and user profile")
 public class AuthController {
 
     private final AuthenticationManager authenticationManager;
@@ -38,6 +45,7 @@ public class AuthController {
     }
 
     @PostMapping("/login")
+    @Operation(summary = "Login", description = "Authenticate with email and password to receive a JWT token")
     public ApiResponse<LoginResponse> login(@Valid @RequestBody LoginRequest request) {
         Authentication authentication = authenticationManager.authenticate(
                 new UsernamePasswordAuthenticationToken(request.getEmail(), request.getPassword())
@@ -55,6 +63,7 @@ public class AuthController {
     }
 
     @PostMapping("/register")
+    @Operation(summary = "Register", description = "Create a new user account with USER role")
     public ApiResponse<String> register(@Valid @RequestBody RegisterRequest request) {
         if (userRepository.findByEmail(request.getEmail()).isPresent()) {
             throw new ResourceAlreadyExistsException("Email already registered");
@@ -72,6 +81,28 @@ public class AuthController {
                 .success(true)
                 .message("User registered successfully")
                 .data("User ID: " + user.getId())
+                .timestamp(LocalDateTime.now())
+                .build();
+    }
+
+    @GetMapping("/me")
+    @Operation(summary = "My profile", description = "Get the currently authenticated user's profile")
+    public ApiResponse<UserProfileDTO> me() {
+        String email = SecurityContextHolder.getContext().getAuthentication().getName();
+        User user = userRepository.findByEmail(email)
+                .orElseThrow(() -> new ResourceNotFoundException("User not found"));
+
+        UserProfileDTO profile = UserProfileDTO.builder()
+                .id(user.getId())
+                .name(user.getName())
+                .email(user.getEmail())
+                .role(user.getRole())
+                .build();
+
+        return ApiResponse.<UserProfileDTO>builder()
+                .success(true)
+                .message("Profile fetched")
+                .data(profile)
                 .timestamp(LocalDateTime.now())
                 .build();
     }
