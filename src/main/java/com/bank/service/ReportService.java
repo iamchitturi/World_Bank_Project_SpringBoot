@@ -16,5 +16,13 @@ public class ReportService {
     public BigDecimal totalBalance() {
         return reportRepository.totalBalance();
     }
+
+    public BigDecimal totalTransactionVolume() {
+        return reportRepository.totalTransactionVolume();
+    }
+
+    public Long activeAccountsCount() {
+        return reportRepository.activeAccountsCount();
+    }
 }
 

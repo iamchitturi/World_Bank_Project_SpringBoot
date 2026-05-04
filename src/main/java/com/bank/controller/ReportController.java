@@ -32,5 +32,27 @@ public class ReportController {
                 .timestamp(LocalDateTime.now())
                 .build();
     }
+
+    @GetMapping("/transaction-volume")
+    @Operation(summary = "Total transaction volume", description = "Get the sum of all transaction amounts in the system")
+    public ApiResponse<Map<String, BigDecimal>> transactionVolume() {
+        return ApiResponse.<Map<String, BigDecimal>>builder()
+                .success(true)
+                .message("Total transaction volume report")
+                .data(Map.of("totalVolume", reportService.totalTransactionVolume()))
+                .timestamp(LocalDateTime.now())
+                .build();
+    }
+
+    @GetMapping("/active-accounts")
+    @Operation(summary = "Active accounts count", description = "Get the number of active accounts")
+    public ApiResponse<Map<String, Long>> activeAccounts() {
+        return ApiResponse.<Map<String, Long>>builder()
+                .success(true)
+                .message("Active accounts report")
+                .data(Map.of("activeAccounts", reportService.activeAccountsCount()))
+                .timestamp(LocalDateTime.now())
+                .build();
+    }
 }
 

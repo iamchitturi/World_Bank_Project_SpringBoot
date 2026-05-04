@@ -17,4 +17,14 @@ public class ReportRepository {
         String sql = "SELECT COALESCE(SUM(balance), 0) FROM accounts";
         return jdbcTemplate.queryForObject(sql, BigDecimal.class);
     }
+
+    public BigDecimal totalTransactionVolume() {
+        String sql = "SELECT COALESCE(SUM(amount), 0) FROM transactions";
+        return jdbcTemplate.queryForObject(sql, BigDecimal.class);
+    }
+
+    public Long activeAccountsCount() {
+        String sql = "SELECT COUNT(*) FROM accounts";
+        return jdbcTemplate.queryForObject(sql, Long.class);
+    }
 }
