@@ -11,6 +11,7 @@ import jakarta.persistence.Version;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import java.math.BigDecimal;
+import java.time.LocalDateTime;
 import lombok.Getter;
 import lombok.Setter;
 
@@ -18,8 +19,7 @@ import lombok.Setter;
 @Setter
 @Entity
 @Table(name = "accounts", uniqueConstraints = {
-        @UniqueConstraint(name = "uk_account_number", columnNames = "account_number"),
-        @UniqueConstraint(name = "uk_user_id", columnNames = "user_id")
+        @UniqueConstraint(name = "uk_account_number", columnNames = "account_number")
 })
 public class Account {
 
@@ -32,15 +32,22 @@ public class Account {
     private String accountNumber;
 
     @NotNull
-    @Column(name = "user_id", nullable = false, unique = true)
+    @Column(name = "user_id", nullable = false)
     private Long userId;
 
     @NotBlank(message = "Name required")
     @Column(nullable = false)
     private String name;
 
+    @NotBlank
+    @Column(name = "account_type", nullable = false, length = 20)
+    private String accountType = "SAVINGS";
+
     @Column(nullable = false, precision = 19, scale = 4)
     private BigDecimal balance = BigDecimal.ZERO;
+
+    @Column(name = "created_at", nullable = false, updatable = false)
+    private LocalDateTime createdAt = LocalDateTime.now();
 
     @Version
     private Long version;

@@ -12,6 +12,10 @@ import java.time.LocalDateTime;
 import java.util.List;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.dao.OptimisticLockingFailureException;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -56,8 +60,16 @@ public class TransactionService {
         sender.setBalance(sender.getBalance().subtract(amount));
         receiver.setBalance(receiver.getBalance().add(amount));
 
-        accountRepository.save(sender);
-        accountRepository.save(receiver);
+        // Prevent Deadlock by locking in a consistent order
+        Account first = sender.getId() < receiver.getId() ? sender : receiver;
+        Account second = sender.getId() < receiver.getId() ? receiver : sender;
+
+        try {
+            accountRepository.save(first);
+            accountRepository.save(second);
+        } catch (OptimisticLockingFailureException e) {
+            throw new InvalidOperationException("Concurrent update detected. Please retry.");
+        }
 
         Transaction txn = new Transaction();
         txn.setFromAccount(fromAcc);
@@ -73,7 +85,8 @@ public class TransactionService {
         return "Transfer successful";
     }
 
-    public List<Transaction> getTransactionHistory(String accountNumber) {
-        return transactionRepository.findByFromAccountOrToAccount(accountNumber, accountNumber);
+    public Page<Transaction> getTransactionHistory(String accountNumber, int page, int size) {
+        Pageable pageable = PageRequest.of(page, size);
+        return transactionRepository.findByFromAccountOrToAccount(accountNumber, accountNumber, pageable);
     }
 }

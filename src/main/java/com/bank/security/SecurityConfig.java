@@ -46,9 +46,7 @@ public class SecurityConfig {
                         .requestMatchers("/api/v1/auth/login", "/api/v1/auth/register").permitAll()
                         .requestMatchers("/v3/api-docs/**", "/swagger-ui/**", "/actuator/health", "/error").permitAll()
                         // Admin-only endpoints
-                        .requestMatchers("/api/v1/account/all", "/api/v1/account/page/**").hasRole("ADMIN")
-                        .requestMatchers("/api/v1/account/create").hasRole("ADMIN")
-                        .requestMatchers("/api/v1/account/delete/**").hasRole("ADMIN")
+                        .requestMatchers("/api/v1/admin/**").hasRole("ADMIN")
                         .requestMatchers("/api/v1/audit/**").hasRole("ADMIN")
                         .requestMatchers("/api/v1/reports/**").hasRole("ADMIN")
                         // Everything else requires authentication (ownership checked in service)
