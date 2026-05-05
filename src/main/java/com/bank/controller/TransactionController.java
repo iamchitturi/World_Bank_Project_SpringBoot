@@ -26,14 +26,14 @@ public class TransactionController {
     }
 
     @GetMapping("/history/{accountNumber}")
-    @Operation(summary = "Transaction history", description = "Get all transactions for an account (sent and received)")
-    public ApiResponse<Page<Transaction>> history(@PathVariable String accountNumber,
-                                                  @RequestParam(defaultValue = "0") int page,
+    @Operation(summary = "Transaction history", description = "Get transactions using cursor-based keyset pagination")
+    public ApiResponse<List<Transaction>> history(@PathVariable String accountNumber,
+                                                  @RequestParam(required = false) Long cursor,
                                                   @RequestParam(defaultValue = "10") int size) {
-        return ApiResponse.<Page<Transaction>>builder()
+        return ApiResponse.<List<Transaction>>builder()
                 .success(true)
                 .message("Transaction history fetched")
-                .data(transactionService.getTransactionHistory(accountNumber, page, size))
+                .data(transactionService.getTransactionHistory(accountNumber, cursor, size))
                 .timestamp(LocalDateTime.now())
                 .build();
     }

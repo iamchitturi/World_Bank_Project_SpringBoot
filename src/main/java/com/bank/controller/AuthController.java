@@ -46,13 +46,20 @@ public class AuthController {
 
     @PostMapping("/login")
     @Operation(summary = "Login", description = "Authenticate with email and password to receive a JWT token")
-    public ApiResponse<LoginResponse> login(@Valid @RequestBody LoginRequest request) {
+    public ApiResponse<LoginResponse> login(@Valid @RequestBody LoginRequest request, jakarta.servlet.http.HttpServletResponse response) {
         Authentication authentication = authenticationManager.authenticate(
                 new UsernamePasswordAuthenticationToken(request.getEmail(), request.getPassword())
         );
 
         UserDetails user = (UserDetails) authentication.getPrincipal();
         String token = jwtService.generateToken(user);
+
+        jakarta.servlet.http.Cookie cookie = new jakarta.servlet.http.Cookie("jwt", token);
+        cookie.setHttpOnly(true);
+        cookie.setSecure(false); // Should be true in production with HTTPS
+        cookie.setPath("/");
+        cookie.setMaxAge(3600); // 1 hour
+        response.addCookie(cookie);
 
         return ApiResponse.<LoginResponse>builder()
                 .success(true)
@@ -103,6 +110,23 @@ public class AuthController {
                 .success(true)
                 .message("Profile fetched")
                 .data(profile)
+                .timestamp(LocalDateTime.now())
+                .build();
+    }
+    @PostMapping("/logout")
+    @Operation(summary = "Logout", description = "Clear the JWT authentication cookie")
+    public ApiResponse<String> logout(jakarta.servlet.http.HttpServletResponse response) {
+        jakarta.servlet.http.Cookie cookie = new jakarta.servlet.http.Cookie("jwt", null);
+        cookie.setHttpOnly(true);
+        cookie.setSecure(false); // Should be true in prod
+        cookie.setPath("/");
+        cookie.setMaxAge(0); // Delete immediately
+        response.addCookie(cookie);
+
+        return ApiResponse.<String>builder()
+                .success(true)
+                .message("Logout successful")
+                .data("Cookie cleared")
                 .timestamp(LocalDateTime.now())
                 .build();
     }

@@ -13,5 +13,7 @@ public interface TransactionRepository extends JpaRepository<Transaction, Long> 
 
     Page<Transaction> findByFromAccountOrToAccount(String fromAccount, String toAccount, Pageable pageable);
 
+    List<Transaction> findByFromAccountOrToAccountAndIdLessThanOrderByIdDesc(String fromAccount, String toAccount, Long id, Pageable pageable);
+
     Optional<Transaction> findByRequestId(String requestId);
 }

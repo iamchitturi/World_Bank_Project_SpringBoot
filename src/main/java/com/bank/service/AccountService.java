@@ -9,8 +9,11 @@ import com.bank.exception.ResourceAlreadyExistsException;
 import com.bank.exception.ResourceNotFoundException;
 import com.bank.repository.AccountRepository;
 import com.bank.repository.CardRepository;
+import com.bank.repository.TransactionRepository;
 import com.bank.repository.UserRepository;
+import com.bank.entity.Transaction;
 import java.math.BigDecimal;
+import java.time.LocalDateTime;
 import java.math.RoundingMode;
 import java.security.SecureRandom;
 import java.util.List;
@@ -35,11 +38,15 @@ public class AccountService {
     private final AccountRepository accountRepository;
     private final UserRepository userRepository;
     private final CardRepository cardRepository;
+    private final TransactionRepository transactionRepository;
+    private final ReportService reportService;
 
-    public AccountService(AccountRepository accountRepository, UserRepository userRepository, CardRepository cardRepository) {
+    public AccountService(AccountRepository accountRepository, UserRepository userRepository, CardRepository cardRepository, TransactionRepository transactionRepository, ReportService reportService) {
         this.accountRepository = accountRepository;
         this.userRepository = userRepository;
         this.cardRepository = cardRepository;
+        this.transactionRepository = transactionRepository;
+        this.reportService = reportService;
     }
 
     // ===== Account number generation =====
@@ -129,7 +136,9 @@ public class AccountService {
         account.setAccountType(type);
         account.setBalance(BigDecimal.ZERO);
 
-        return accountRepository.save(account);
+        Account saved = accountRepository.save(account);
+        reportService.refreshCache();
+        return saved;
     }
 
     public Account getAccount(String accountNumber) {
@@ -152,31 +161,61 @@ public class AccountService {
     }
 
     @Transactional
-    public Account deposit(String accountNumber, BigDecimal amount) {
+    public Account deposit(String accountNumber, BigDecimal amount, String idempotencyKey) {
         if (amount.compareTo(BigDecimal.ZERO) <= 0) {
             throw new InvalidOperationException("Amount must be greater than 0");
         }
+        if (transactionRepository.findByRequestId(idempotencyKey).isPresent()) {
+            return getAccount(accountNumber); // Idempotency fallback
+        }
+        
         Account acc = getAccount(accountNumber);
         acc.setBalance(acc.getBalance().add(amount));
         try {
-            return accountRepository.save(acc);
+            acc = accountRepository.save(acc);
+            
+            Transaction txn = new Transaction();
+            txn.setFromAccount("SYSTEM");
+            txn.setToAccount(accountNumber);
+            txn.setAmount(amount);
+            txn.setDate(LocalDateTime.now());
+            txn.setRequestId(idempotencyKey);
+            transactionRepository.save(txn);
+            
+            reportService.refreshCache();
+            return acc;
         } catch (OptimisticLockingFailureException ex) {
             throw new InvalidOperationException("Concurrent update detected. Please retry.");
         }
     }
 
     @Transactional
-    public Account withdraw(String accountNumber, BigDecimal amount) {
+    public Account withdraw(String accountNumber, BigDecimal amount, String idempotencyKey) {
         if (amount.compareTo(BigDecimal.ZERO) <= 0) {
             throw new InvalidOperationException("Amount must be greater than 0");
         }
+        if (transactionRepository.findByRequestId(idempotencyKey).isPresent()) {
+            return getAccount(accountNumber); // Idempotency fallback
+        }
+
         Account acc = getAccount(accountNumber);
         if (acc.getBalance().compareTo(amount) < 0) {
             throw new InsufficientBalanceException("Insufficient balance");
         }
         acc.setBalance(acc.getBalance().subtract(amount));
         try {
-            return accountRepository.save(acc);
+            acc = accountRepository.save(acc);
+            
+            Transaction txn = new Transaction();
+            txn.setFromAccount(accountNumber);
+            txn.setToAccount("ATM_WITHDRAWAL");
+            txn.setAmount(amount);
+            txn.setDate(LocalDateTime.now());
+            txn.setRequestId(idempotencyKey);
+            transactionRepository.save(txn);
+            
+            reportService.refreshCache();
+            return acc;
         } catch (OptimisticLockingFailureException ex) {
             throw new InvalidOperationException("Concurrent update detected. Please retry.");
         }
@@ -187,6 +226,7 @@ public class AccountService {
         Account acc = getAccount(accountNumber);
         cardRepository.deleteByAccountId(acc.getId());
         accountRepository.delete(acc);
+        reportService.refreshCache();
         return "Account deleted successfully";
     }
 

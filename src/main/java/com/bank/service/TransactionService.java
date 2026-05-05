@@ -17,6 +17,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Isolation;
 import org.springframework.transaction.annotation.Transactional;
 
 @Service
@@ -32,7 +33,7 @@ public class TransactionService {
         this.transactionRepository = transactionRepository;
     }
 
-    @Transactional
+    @Transactional(isolation = Isolation.REPEATABLE_READ)
     public String transfer(String fromAcc, String toAcc, BigDecimal amount, String requestId) {
 
         if (amount.compareTo(BigDecimal.ZERO) <= 0) {
@@ -85,8 +86,12 @@ public class TransactionService {
         return "Transfer successful";
     }
 
-    public Page<Transaction> getTransactionHistory(String accountNumber, int page, int size) {
-        Pageable pageable = PageRequest.of(page, size);
-        return transactionRepository.findByFromAccountOrToAccount(accountNumber, accountNumber, pageable);
+    public List<Transaction> getTransactionHistory(String accountNumber, Long cursor, int size) {
+        Pageable pageable = PageRequest.of(0, size);
+        if (cursor == null || cursor <= 0) {
+            cursor = Long.MAX_VALUE; // Fetch from top
+        }
+        return transactionRepository.findByFromAccountOrToAccountAndIdLessThanOrderByIdDesc(
+            accountNumber, accountNumber, cursor, pageable);
     }
 }

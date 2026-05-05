@@ -16,6 +16,7 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
@@ -61,16 +62,22 @@ public class CustomerAccountController {
 
     @PostMapping("/deposit")
     @Operation(summary = "Deposit funds")
-    public ApiResponse<Account> deposit(@RequestParam String accountNumber, @RequestParam BigDecimal amount) {
+    public ApiResponse<Account> deposit(@RequestParam String accountNumber, 
+                                        @RequestParam BigDecimal amount,
+                                        @RequestHeader(value = "Idempotency-Key", required = false) String idempotencyKey) {
+        if (idempotencyKey == null) idempotencyKey = java.util.UUID.randomUUID().toString();
         accountService.enforceStrictOwnership(accountNumber);
-        return ok(accountService.deposit(accountNumber, amount), "Deposit successful");
+        return ok(accountService.deposit(accountNumber, amount, idempotencyKey), "Deposit successful");
     }
 
     @PostMapping("/withdraw")
     @Operation(summary = "Withdraw funds")
-    public ApiResponse<Account> withdraw(@RequestParam String accountNumber, @RequestParam BigDecimal amount) {
+    public ApiResponse<Account> withdraw(@RequestParam String accountNumber, 
+                                         @RequestParam BigDecimal amount,
+                                         @RequestHeader(value = "Idempotency-Key", required = false) String idempotencyKey) {
+        if (idempotencyKey == null) idempotencyKey = java.util.UUID.randomUUID().toString();
         accountService.enforceStrictOwnership(accountNumber);
-        return ok(accountService.withdraw(accountNumber, amount), "Withdraw successful");
+        return ok(accountService.withdraw(accountNumber, amount, idempotencyKey), "Withdraw successful");
     }
 
     @PostMapping("/transfer")
