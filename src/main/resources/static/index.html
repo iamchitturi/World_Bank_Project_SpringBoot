@@ -1,15 +1,56 @@
 <!DOCTYPE html>
-<html lang="en">
+<html class="light" lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>World Bank</title>
-    <meta name="description" content="World Bank — Secure banking platform">
-    <link rel="stylesheet" href="/css/style.css">
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>World Bank — Secure NetBanking</title>
+<meta name="description" content="World Bank — Secure, fast, and reliable digital banking for professionals."/>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,400&family=DM+Serif+Display:ital@0;1&family=Inter:wght@400;600;700;900&display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet"/>
+<script>
+  tailwind.config = {
+    darkMode: "class",
+    theme: {
+      extend: {
+        colors: {
+          "on-secondary":"#ffffff","outline":"#727782","error":"#ba1a1a",
+          "primary-fixed":"#d5e3ff","on-tertiary-fixed-variant":"#434749",
+          "on-tertiary":"#ffffff","tertiary":"#1e2022","secondary":"#bb0013",
+          "background":"#f9f7f6","surface-container-low":"#f5f3f3",
+          "surface-bright":"#fbf9f8","on-tertiary-container":"#b9bcbe",
+          "surface-container-highest":"#e4e2e2","on-primary":"#ffffff",
+          "inverse-on-surface":"#f2f0f0","on-surface":"#1b1c1c",
+          "inverse-surface":"#303031","tertiary-fixed":"#e0e3e5",
+          "tertiary-container":"#484c4e","on-surface-variant":"#424750",
+          "inverse-primary":"#a6c8ff","primary-fixed-dim":"#a6c8ff",
+          "surface-tint":"#255fa3","surface":"#fbf9f8",
+          "tertiary-fixed-dim":"#c4c7c9","surface-dim":"#dbdad9",
+          "on-secondary-fixed-variant":"#93000d","surface-container":"#efeded",
+          "on-error":"#ffffff","on-tertiary-fixed":"#181c1e",
+          "outline-variant":"#c2c6d2","primary":"#003567",
+          "on-primary-fixed":"#001c3b","on-secondary-container":"#fffbff",
+          "on-primary-fixed-variant":"#004786","primary-container":"#004c8f",
+          "on-primary-container":"#94beff","secondary-fixed-dim":"#ffb4ab",
+          "on-background":"#1b1c1c","surface-variant":"#e4e2e2",
+          "on-secondary-fixed":"#410002","secondary-fixed":"#ffdad6",
+          "surface-container-lowest":"#ffffff","error-container":"#ffdad6",
+          "secondary-container":"#e71520","surface-container-high":"#e9e8e7"
+        },
+        borderRadius: { DEFAULT:"0.25rem", sm:"0.125rem", md:"0.375rem", lg:"0.5rem", xl:"0.75rem", "2xl":"1rem", full:"9999px" },
+        fontFamily: { display:["DM Serif Display","Georgia","serif"], sans:["DM Sans","system-ui","sans-serif"] },
+        spacing: { "gutter":"24px","margin":"32px" }
+      }
+    }
+  }
+</script>
+<link rel="stylesheet" href="/css/style.css"/>
 </head>
-<body>
-    <div id="app"></div>
-    <div class="toast-container" id="toasts"></div>
-    <script src="/js/app.js"></script>
+<body class="bg-background text-on-background min-h-screen flex flex-col font-sans antialiased">
+  <div id="app"></div>
+  <div class="toast-container" id="toasts"></div>
+  <script src="/js/core.js"></script>
+  <script src="/js/pages-public.js"></script>
+  <script src="/js/pages-app.js"></script>
 </body>
 </html>
