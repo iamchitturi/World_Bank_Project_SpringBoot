@@ -23,3 +23,9 @@ Thumbs.db
 
 # Env files (real credentials)
 .env
+
+# Application logs
+logs/
+
+# Docker volumes
+data/

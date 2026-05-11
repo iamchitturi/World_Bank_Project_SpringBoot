@@ -2,6 +2,8 @@ package com.bank.service;
 
 import com.bank.entity.Account;
 import com.bank.entity.Transaction;
+import com.bank.event.TransactionEvent;
+import com.bank.event.producer.EventProducer;
 import com.bank.exception.InsufficientBalanceException;
 import com.bank.exception.InvalidOperationException;
 import com.bank.exception.ResourceNotFoundException;
@@ -12,10 +14,13 @@ import java.time.LocalDateTime;
 import java.util.List;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.annotation.Caching;
 import org.springframework.dao.OptimisticLockingFailureException;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Isolation;
 import org.springframework.transaction.annotation.Transactional;
@@ -27,10 +32,14 @@ public class TransactionService {
 
     private final AccountRepository accountRepository;
     private final TransactionRepository transactionRepository;
+    private final EventProducer eventProducer;
 
-    public TransactionService(AccountRepository accountRepository, TransactionRepository transactionRepository) {
+    public TransactionService(AccountRepository accountRepository,
+                              TransactionRepository transactionRepository,
+                              EventProducer eventProducer) {
         this.accountRepository = accountRepository;
         this.transactionRepository = transactionRepository;
+        this.eventProducer = eventProducer;
     }
 
     @Transactional(isolation = Isolation.REPEATABLE_READ)
@@ -80,6 +89,15 @@ public class TransactionService {
         txn.setRequestId(requestId);
 
         transactionRepository.save(txn);
+
+        // Publish async event to Kafka (non-blocking — transfer succeeds even if Kafka is down)
+        try {
+            String currentUser = SecurityContextHolder.getContext().getAuthentication().getName();
+            eventProducer.publishTransactionEvent(
+                    new TransactionEvent("TRANSFER", fromAcc, toAcc, amount, requestId, currentUser));
+        } catch (Exception e) {
+            log.warn("Failed to publish transfer event: {}", e.getMessage());
+        }
 
         log.info("Transfer successful for requestId {}", requestId);
 

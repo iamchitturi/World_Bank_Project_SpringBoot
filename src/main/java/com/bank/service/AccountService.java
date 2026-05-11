@@ -3,6 +3,9 @@ package com.bank.service;
 import com.bank.dto.CreateAccountDTO;
 import com.bank.entity.Account;
 import com.bank.entity.User;
+import com.bank.event.AccountEvent;
+import com.bank.event.TransactionEvent;
+import com.bank.event.producer.EventProducer;
 import com.bank.exception.InsufficientBalanceException;
 import com.bank.exception.InvalidOperationException;
 import com.bank.exception.ResourceAlreadyExistsException;
@@ -19,6 +22,9 @@ import java.security.SecureRandom;
 import java.util.List;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.annotation.Cacheable;
+import org.springframework.cache.annotation.Caching;
 import org.springframework.dao.OptimisticLockingFailureException;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -40,13 +46,17 @@ public class AccountService {
     private final CardRepository cardRepository;
     private final TransactionRepository transactionRepository;
     private final ReportService reportService;
+    private final EventProducer eventProducer;
 
-    public AccountService(AccountRepository accountRepository, UserRepository userRepository, CardRepository cardRepository, TransactionRepository transactionRepository, ReportService reportService) {
+    public AccountService(AccountRepository accountRepository, UserRepository userRepository,
+                          CardRepository cardRepository, TransactionRepository transactionRepository,
+                          ReportService reportService, EventProducer eventProducer) {
         this.accountRepository = accountRepository;
         this.userRepository = userRepository;
         this.cardRepository = cardRepository;
         this.transactionRepository = transactionRepository;
         this.reportService = reportService;
+        this.eventProducer = eventProducer;
     }
 
     // ===== Account number generation =====
@@ -99,6 +109,7 @@ public class AccountService {
     }
 
     // ===== Multi-account queries =====
+    @Cacheable(value = "userAccounts", key = "T(org.springframework.security.core.context.SecurityContextHolder).getContext().getAuthentication().getName()")
     public List<Account> getMyAccounts() {
         User user = getCurrentUser();
         return accountRepository.findByUserId(user.getId());
@@ -109,6 +120,10 @@ public class AccountService {
     }
 
     // ===== CRUD =====
+    @Caching(evict = {
+            @CacheEvict(value = "userAccounts", allEntries = true),
+            @CacheEvict(value = "reports", allEntries = true)
+    })
     @Transactional
     public Account createAccount(CreateAccountDTO dto) {
         log.info("Create account request started");
@@ -137,10 +152,19 @@ public class AccountService {
         account.setBalance(BigDecimal.ZERO);
 
         Account saved = accountRepository.save(account);
-        reportService.refreshCache();
+
+        // Publish account creation event to Kafka (non-blocking)
+        try {
+            eventProducer.publishAccountEvent(
+                    new AccountEvent("CREATED", saved.getAccountNumber(), userId, type, getCurrentUser().getEmail()));
+        } catch (Exception e) {
+            log.warn("Failed to publish account creation event: {}", e.getMessage());
+        }
+
         return saved;
     }
 
+    @Cacheable(value = "accounts", key = "#accountNumber")
     public Account getAccount(String accountNumber) {
         return accountRepository.findByAccountNumber(accountNumber)
                 .orElseThrow(() -> new ResourceNotFoundException("Account not found: " + accountNumber));
@@ -160,16 +184,23 @@ public class AccountService {
                 .divide(new BigDecimal("100"), 4, RoundingMode.HALF_UP);
     }
 
+    @Caching(evict = {
+            @CacheEvict(value = "accounts", key = "#accountNumber"),
+            @CacheEvict(value = "userAccounts", allEntries = true),
+            @CacheEvict(value = "reports", allEntries = true)
+    })
     @Transactional
     public Account deposit(String accountNumber, BigDecimal amount, String idempotencyKey) {
         if (amount.compareTo(BigDecimal.ZERO) <= 0) {
             throw new InvalidOperationException("Amount must be greater than 0");
         }
         if (transactionRepository.findByRequestId(idempotencyKey).isPresent()) {
-            return getAccount(accountNumber); // Idempotency fallback
+            return accountRepository.findByAccountNumber(accountNumber)
+                    .orElseThrow(() -> new ResourceNotFoundException("Account not found: " + accountNumber));
         }
         
-        Account acc = getAccount(accountNumber);
+        Account acc = accountRepository.findByAccountNumber(accountNumber)
+                .orElseThrow(() -> new ResourceNotFoundException("Account not found: " + accountNumber));
         acc.setBalance(acc.getBalance().add(amount));
         try {
             acc = accountRepository.save(acc);
@@ -182,23 +213,38 @@ public class AccountService {
             txn.setRequestId(idempotencyKey);
             transactionRepository.save(txn);
             
-            reportService.refreshCache();
+            // Publish deposit event to Kafka (non-blocking)
+            try {
+                eventProducer.publishTransactionEvent(
+                        new TransactionEvent("DEPOSIT", "SYSTEM", accountNumber, amount, idempotencyKey,
+                                SecurityContextHolder.getContext().getAuthentication().getName()));
+            } catch (Exception e) {
+                log.warn("Failed to publish deposit event: {}", e.getMessage());
+            }
+
             return acc;
         } catch (OptimisticLockingFailureException ex) {
             throw new InvalidOperationException("Concurrent update detected. Please retry.");
         }
     }
 
+    @Caching(evict = {
+            @CacheEvict(value = "accounts", key = "#accountNumber"),
+            @CacheEvict(value = "userAccounts", allEntries = true),
+            @CacheEvict(value = "reports", allEntries = true)
+    })
     @Transactional
     public Account withdraw(String accountNumber, BigDecimal amount, String idempotencyKey) {
         if (amount.compareTo(BigDecimal.ZERO) <= 0) {
             throw new InvalidOperationException("Amount must be greater than 0");
         }
         if (transactionRepository.findByRequestId(idempotencyKey).isPresent()) {
-            return getAccount(accountNumber); // Idempotency fallback
+            return accountRepository.findByAccountNumber(accountNumber)
+                    .orElseThrow(() -> new ResourceNotFoundException("Account not found: " + accountNumber));
         }
 
-        Account acc = getAccount(accountNumber);
+        Account acc = accountRepository.findByAccountNumber(accountNumber)
+                .orElseThrow(() -> new ResourceNotFoundException("Account not found: " + accountNumber));
         if (acc.getBalance().compareTo(amount) < 0) {
             throw new InsufficientBalanceException("Insufficient balance");
         }
@@ -213,20 +259,33 @@ public class AccountService {
             txn.setDate(LocalDateTime.now());
             txn.setRequestId(idempotencyKey);
             transactionRepository.save(txn);
-            
-            reportService.refreshCache();
+
+            // Publish withdrawal event to Kafka (non-blocking)
+            try {
+                eventProducer.publishTransactionEvent(
+                        new TransactionEvent("WITHDRAWAL", accountNumber, "ATM_WITHDRAWAL", amount, idempotencyKey,
+                                SecurityContextHolder.getContext().getAuthentication().getName()));
+            } catch (Exception e) {
+                log.warn("Failed to publish withdrawal event: {}", e.getMessage());
+            }
+
             return acc;
         } catch (OptimisticLockingFailureException ex) {
             throw new InvalidOperationException("Concurrent update detected. Please retry.");
         }
     }
 
+    @Caching(evict = {
+            @CacheEvict(value = "accounts", key = "#accountNumber"),
+            @CacheEvict(value = "userAccounts", allEntries = true),
+            @CacheEvict(value = "reports", allEntries = true)
+    })
     @Transactional
     public String deleteAccount(String accountNumber) {
-        Account acc = getAccount(accountNumber);
+        Account acc = accountRepository.findByAccountNumber(accountNumber)
+                .orElseThrow(() -> new ResourceNotFoundException("Account not found: " + accountNumber));
         cardRepository.deleteByAccountId(acc.getId());
         accountRepository.delete(acc);
-        reportService.refreshCache();
         return "Account deleted successfully";
     }
 

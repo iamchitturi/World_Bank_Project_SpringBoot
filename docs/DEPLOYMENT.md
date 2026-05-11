@@ -1,34 +1,32 @@
 # Deployment Guide
 
-This guide covers deploying the TrustBank application to production. Since the application is Dockerized, it can be deployed to almost any cloud provider.
+This guide covers deploying the TrustBank application to production. Since the application and its dependencies are fully Dockerized, it can be deployed to any modern cloud provider or orchestrated environment.
 
 ## 1. Environment Preparation
-Before deploying, ensure you have an external MySQL database ready (e.g., AWS RDS, Aiven).
-You will need to configure the following environment variables in your deployment environment:
-*   `DB_URL`
+For a complete enterprise deployment, you need to configure the following environment variables:
+
+**Core Setup:**
+*   `DB_URL` (e.g., AWS RDS, Cloud SQL)
 *   `DB_USERNAME`
 *   `DB_PASSWORD`
-*   `JWT_SECRET`
-*   `PORT` (usually 8080)
+*   `JWT_SECRET` (256-bit secure key)
 
-## 2. Docker Deployment
-The project includes a multi-stage `Dockerfile`. 
-To build and run the image manually on any server:
+**Enterprise Integrations:**
+*   `REDIS_HOST` & `REDIS_PORT` (for distributed caching)
+*   `KAFKA_BOOTSTRAP_SERVERS` (for async event-driven features)
+*   `ZIPKIN_ENDPOINT` (for distributed tracing)
 
+## 2. Full Stack Deployment (Docker Compose)
+The project includes a robust `docker-compose.yml` that defines the entire 11-service enterprise stack. This is ideal for a VM-based deployment (e.g., EC2, DigitalOcean Droplet).
+
+1. Copy the `docker-compose.yml` and the `infra/` folder to your server.
+2. Run the stack:
 ```bash
-# Build the image
-docker build -t trustbank-api .
-
-# Run the container
-docker run -d -p 8080:8080 \
-  -e DB_URL="jdbc:mysql://your-db-host/bank_db" \
-  -e DB_USERNAME="root" \
-  -e DB_PASSWORD="secret" \
-  -e JWT_SECRET="your-secure-secret" \
-  trustbank-api
+docker-compose up -d
 ```
+This will start: Spring Boot API, MySQL, Redis, Kafka, Prometheus, Grafana, Elasticsearch, Logstash, Kibana, and Zipkin. All automatically networked together.
 
-## 3. Render Deployment (Recommended)
+## 3. Render Deployment (Recommended for API Only)
 Render natively supports building and hosting Dockerized applications directly from GitHub.
 
 1.  Connect your GitHub repository to [Render](https://dashboard.render.com).
@@ -37,8 +35,10 @@ Render natively supports building and hosting Dockerized applications directly f
 4.  Add the Environment Variables listed in Step 1.
 5.  Deploy. Render will automatically build the `Dockerfile` and expose the API.
 
+*Note: The application has graceful fallbacks for Redis and Kafka. You can deploy just the API and a database to Render, and the application will still function using in-memory cache and synchronous processing.*
+
 ### Infrastructure as Code (render.yaml)
-You can optionally add a `render.yaml` to the root of the project to automate the setup:
+You can optionally use `render.yaml` to automate the API and Database setup:
 ```yaml
 services:
   - type: web
@@ -61,7 +61,8 @@ services:
 ```
 
 ## 4. CI/CD Pipeline
-This repository uses **GitHub Actions** for CI/CD:
-*   **`ci.yml`**: Runs on every push/PR. Compiles the code, runs unit tests, and uploads a JaCoCo coverage report.
-*   **`codeql.yml`**: Runs SAST security scanning.
+This repository uses **GitHub Actions** for comprehensive CI/CD:
+*   **`ci.yml`**: Runs on every push/PR. Compiles the code, runs 20+ unit tests, and uploads a JaCoCo coverage report.
+*   **`codeql.yml`**: Runs SAST security scanning on the codebase.
 *   **`docker-publish.yml`**: On push to `main` or new tags, builds the Docker image and publishes it to the GitHub Container Registry (`ghcr.io`). You can configure your cloud provider to automatically pull this image.
+

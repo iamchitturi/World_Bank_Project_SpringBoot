@@ -17,6 +17,10 @@ You must pass the token in the `Authorization` header:
 *   `POST /api/v1/auth/login`: Authenticate and receive a JWT.
 *   `POST /api/v1/auth/register`: Register a new user profile.
 
+## Headers & Observability
+*   **Rate Limiting**: The API is protected by Bucket4j. You are limited to **120 requests per minute** per IP. Exceeding this will return a `429 Too Many Requests` status.
+*   **Correlation IDs**: Every response includes an `X-Correlation-Id` header. This ID tracks your request through the system logs and distributed tracing (Zipkin). Please include this ID when reporting issues.
+
 ## Key Endpoints
 
 ### User Management (`/api/v1/users`)

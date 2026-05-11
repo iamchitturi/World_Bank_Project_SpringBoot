@@ -1,6 +1,40 @@
 version: "3.8"
 
 services:
+
+  # ================================================================
+  # APPLICATION
+  # ================================================================
+  app:
+    build: .
+    container_name: bank-app
+    ports:
+      - "8080:8080"
+    environment:
+      SPRING_PROFILES_ACTIVE: prod
+      DB_URL: jdbc:mysql://mysql:3306/bank_db?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC
+      DB_USERNAME: root
+      DB_PASSWORD: ${DB_PASSWORD:-secret}
+      JWT_SECRET: ${JWT_SECRET:-change-me-in-production-256-bit-key-here}
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      KAFKA_BOOTSTRAP_SERVERS: kafka:29092
+      ZIPKIN_ENDPOINT: http://zipkin:9411/api/v2/spans
+      TRACING_SAMPLE_RATE: 1.0
+    depends_on:
+      mysql:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      kafka:
+        condition: service_healthy
+    networks:
+      - trustbank-net
+    restart: unless-stopped
+
+  # ================================================================
+  # DATABASE
+  # ================================================================
   mysql:
     image: mysql:8
     container_name: bank-mysql
@@ -16,20 +50,8 @@ services:
       interval: 10s
       timeout: 5s
       retries: 5
-
-  app:
-    build: .
-    container_name: bank-app
-    ports:
-      - "8080:8080"
-    environment:
-      DB_URL: jdbc:mysql://mysql:3306/bank_db?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC
-      DB_USERNAME: root
-      DB_PASSWORD: ${DB_PASSWORD:-secret}
-      JWT_SECRET: ${JWT_SECRET:-change-me-in-production-256-bit-key-here}
-    depends_on:
-      mysql:
-        condition: service_healthy
+    networks:
+      - trustbank-net
 
   adminer:
     image: adminer
@@ -38,6 +60,164 @@ services:
       - "9090:8080"
     depends_on:
       - mysql
+    networks:
+      - trustbank-net
 
+  # ================================================================
+  # DISTRIBUTED CACHE
+  # ================================================================
+  redis:
+    image: redis:7-alpine
+    container_name: bank-redis
+    ports:
+      - "6379:6379"
+    command: redis-server --appendonly yes --maxmemory 256mb --maxmemory-policy allkeys-lru
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - trustbank-net
+
+  # ================================================================
+  # EVENT BROKER (Kafka KRaft — no Zookeeper needed)
+  # ================================================================
+  kafka:
+    image: confluentinc/cp-kafka:7.6.0
+    container_name: bank-kafka
+    ports:
+      - "9092:9092"
+    environment:
+      KAFKA_NODE_ID: 1
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: CONTROLLER:PLAINTEXT,PLAINTEXT:PLAINTEXT,EXTERNAL:PLAINTEXT
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:29092,EXTERNAL://localhost:9092
+      KAFKA_LISTENERS: PLAINTEXT://kafka:29092,CONTROLLER://kafka:29093,EXTERNAL://0.0.0.0:9092
+      KAFKA_CONTROLLER_LISTENER_NAMES: CONTROLLER
+      KAFKA_CONTROLLER_QUORUM_VOTERS: 1@kafka:29093
+      KAFKA_PROCESS_ROLES: broker,controller
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
+      CLUSTER_ID: "MkU3OEVBNTcwNTJENDM2Qk"
+    volumes:
+      - kafka_data:/var/lib/kafka/data
+    healthcheck:
+      test: kafka-topics --bootstrap-server kafka:29092 --list || exit 1
+      interval: 15s
+      timeout: 10s
+      retries: 10
+    networks:
+      - trustbank-net
+
+  # ================================================================
+  # OBSERVABILITY — Prometheus (Metrics Collection)
+  # ================================================================
+  prometheus:
+    image: prom/prometheus:v2.51.0
+    container_name: bank-prometheus
+    ports:
+      - "9091:9090"
+    volumes:
+      - ./infra/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus_data:/prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.retention.time=15d'
+    depends_on:
+      - app
+    networks:
+      - trustbank-net
+
+  # ================================================================
+  # OBSERVABILITY — Grafana (Dashboards)
+  # ================================================================
+  grafana:
+    image: grafana/grafana:10.4.0
+    container_name: bank-grafana
+    ports:
+      - "3000:3000"
+    environment:
+      GF_SECURITY_ADMIN_USER: admin
+      GF_SECURITY_ADMIN_PASSWORD: admin
+    volumes:
+      - grafana_data:/var/lib/grafana
+    depends_on:
+      - prometheus
+    networks:
+      - trustbank-net
+
+  # ================================================================
+  # OBSERVABILITY — Elasticsearch (Log Storage)
+  # ================================================================
+  elasticsearch:
+    image: docker.elastic.co/elasticsearch/elasticsearch:8.13.0
+    container_name: bank-elasticsearch
+    ports:
+      - "9200:9200"
+    environment:
+      discovery.type: single-node
+      xpack.security.enabled: "false"
+      ES_JAVA_OPTS: "-Xms512m -Xmx512m"
+    volumes:
+      - es_data:/usr/share/elasticsearch/data
+    networks:
+      - trustbank-net
+
+  # ================================================================
+  # OBSERVABILITY — Logstash (Log Pipeline)
+  # ================================================================
+  logstash:
+    image: docker.elastic.co/logstash/logstash:8.13.0
+    container_name: bank-logstash
+    ports:
+      - "5000:5000"
+    volumes:
+      - ./infra/logstash/pipeline:/usr/share/logstash/pipeline:ro
+    depends_on:
+      - elasticsearch
+    networks:
+      - trustbank-net
+
+  # ================================================================
+  # OBSERVABILITY — Kibana (Log Visualization)
+  # ================================================================
+  kibana:
+    image: docker.elastic.co/kibana/kibana:8.13.0
+    container_name: bank-kibana
+    ports:
+      - "5601:5601"
+    environment:
+      ELASTICSEARCH_HOSTS: http://elasticsearch:9200
+    depends_on:
+      - elasticsearch
+    networks:
+      - trustbank-net
+
+  # ================================================================
+  # OBSERVABILITY — Zipkin (Distributed Tracing)
+  # ================================================================
+  zipkin:
+    image: openzipkin/zipkin:3
+    container_name: bank-zipkin
+    ports:
+      - "9411:9411"
+    networks:
+      - trustbank-net
+
+# ================================================================
+# VOLUMES & NETWORKS
+# ================================================================
 volumes:
   mysql_data:
+  redis_data:
+  kafka_data:
+  prometheus_data:
+  grafana_data:
+  es_data:
+
+networks:
+  trustbank-net:
+    driver: bridge

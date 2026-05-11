@@ -1,7 +1,42 @@
-# TrustBank Project - Spring Boot
+# 🏦 TrustBank — Enterprise Banking Platform
+
+> A production-grade, event-driven banking system built with Spring Boot 3, featuring distributed caching, asynchronous messaging, full observability, and resilient fault tolerance.
+
+[![CI](https://github.com/iamchitturi/World_Bank_Project_SpringBoot/actions/workflows/ci.yml/badge.svg)](https://github.com/iamchitturi/World_Bank_Project_SpringBoot/actions/workflows/ci.yml)
+[![CodeQL](https://github.com/iamchitturi/World_Bank_Project_SpringBoot/actions/workflows/codeql.yml/badge.svg)](https://github.com/iamchitturi/World_Bank_Project_SpringBoot/actions/workflows/codeql.yml)
+
+## ⚡ Tech Stack
+
+| Layer | Technology |
+|---|---|
+| **Runtime** | Java 17, Spring Boot 3.3.5 |
+| **Database** | MySQL 8, Flyway, Hikari Pool |
+| **Cache** | Redis 7 (`@Cacheable` distributed cache) |
+| **Messaging** | Apache Kafka (KRaft mode, event-driven) |
+| **Security** | Spring Security, JWT, BCrypt, Bucket4j Rate Limiting |
+| **Resilience** | Resilience4j Circuit Breakers & Retries |
+| **Metrics** | Micrometer → Prometheus → Grafana |
+| **Logging** | Logback JSON → Logstash → Elasticsearch → Kibana |
+| **Tracing** | OpenTelemetry → Zipkin |
+| **API Docs** | SpringDoc OpenAPI (Swagger UI) |
+| **CI/CD** | GitHub Actions, JaCoCo, CodeQL SAST, Docker Publish |
+| **Testing** | JUnit 5, Mockito, K6 Load Testing |
+
+## 📐 Architecture
+
+```
+Client → Spring Security (JWT) → REST Controllers → Service Layer
+                                                        ├── Redis Cache (read-heavy queries)
+                                                        ├── JPA → MySQL (ACID transactions)
+                                                        ├── Kafka Producer → Event Topics
+                                                        │       ├── Notification Consumer
+                                                        │       └── Audit Event Consumer
+                                                        └── Resilience4j (circuit breaker)
+
+Observability:  Prometheus + Grafana  |  ELK Stack  |  Zipkin Tracing
+```
 
 ## 📚 Documentation
-We have comprehensive documentation available in the `docs/` folder:
 - [Architecture & Diagrams](docs/ARCHITECTURE.md)
 - [Database Schema](docs/SCHEMA.md)
 - [Feature Breakdown](docs/FEATURES.md)
@@ -9,45 +44,76 @@ We have comprehensive documentation available in the `docs/` folder:
 - [Local Setup Guide](docs/SETUP.md)
 - [Deployment Guide (Docker & Render)](docs/DEPLOYMENT.md)
 
----
+## 🚀 Quick Start
 
-## Postman quick start
+### Option 1: Full Stack with Docker Compose
+```bash
+docker-compose up -d
+```
+This starts the complete enterprise stack: App + MySQL + Redis + Kafka + Prometheus + Grafana + ELK + Zipkin.
 
-This API is secured with JWT. Most `POST` endpoints require a bearer token.
+### Option 2: Local Development
+```bash
+# Start just MySQL + Redis
+docker-compose up -d mysql redis
 
-1. **Login first**
-   - `POST http://localhost:8080/api/v1/auth/login`
-   - Header: `Content-Type: application/json`
-   - Body:
-     ```json
-     {
-       "email": "admin@bank.com",
-       "password": "Admin@123"
-     }
-     ```
-2. Copy the token from `data.token`.
-3. For protected endpoints, add header:
-   - `Authorization: Bearer <token>`
+# Run the application
+./mvnw spring-boot:run
+```
 
-### Common POST examples
+### Dashboards
+| Service | URL |
+|---|---|
+| **Application API** | http://localhost:8080 |
+| **Swagger UI** | http://localhost:8080/swagger-ui/index.html |
+| **Grafana Dashboards** | http://localhost:3000 (admin/admin) |
+| **Kibana Logs** | http://localhost:5601 |
+| **Zipkin Tracing** | http://localhost:9411 |
+| **Prometheus** | http://localhost:9091 |
+| **Adminer (DB)** | http://localhost:9090 |
 
-- Create account:
-  - `POST /api/v1/account/create`
-  - JSON body with account fields.
-- Deposit:
-  - `POST /api/v1/account/deposit?accountNumber=ACC1001&amount=500`
-- Withdraw:
-  - `POST /api/v1/account/withdraw?accountNumber=ACC1001&amount=200`
-- Transfer:
-  - `POST /api/v1/account/transfer`
-  - JSON body:
-    ```json
-    {
-      "fromAcc": "ACC1001",
-      "toAcc": "ACC1002",
-      "amount": 100,
-      "requestId": "req-123"
-    }
-    ```
+## 🔐 API Authentication
 
-If token is missing/invalid, the API now returns a JSON `401` response that explains how to authenticate.
+```bash
+# 1. Login
+curl -X POST http://localhost:8080/api/v1/auth/login \
+  -H "Content-Type: application/json" \
+  -d '{"email":"admin@bank.com","password":"Admin@123"}'
+
+# 2. Use the returned token
+curl -H "Authorization: Bearer <token>" \
+  http://localhost:8080/api/v1/account/my-accounts
+```
+
+## 🧪 Running Tests
+```bash
+# Unit tests
+./mvnw test
+
+# With coverage report
+./mvnw test jacoco:report
+
+# Load test (requires K6 installed)
+k6 run k6/load-test.js
+```
+
+## 📁 Project Structure
+```
+├── src/main/java/com/bank/
+│   ├── config/          # Redis, OpenAPI, Scheduling config
+│   ├── controller/      # REST API endpoints
+│   ├── dto/             # Request/Response DTOs
+│   ├── entity/          # JPA entities (Account, Transaction, Card, User, AuditLog)
+│   ├── event/           # Kafka events & consumers
+│   │   ├── producer/    # EventProducer (Circuit Breaker protected)
+│   │   └── consumer/    # NotificationConsumer, AuditEventConsumer
+│   ├── exception/       # Global exception handler
+│   ├── filter/          # CorrelationId, RateLimit filters
+│   ├── repository/      # Spring Data JPA repositories
+│   ├── security/        # JWT, SecurityConfig, UserDetails
+│   └── service/         # Business logic (cached, transactional)
+├── infra/               # Prometheus, Logstash configs
+├── k6/                  # Load testing scripts
+├── docs/                # Architecture, API, Schema, Deployment docs
+└── .github/workflows/   # CI/CD pipelines
+```
