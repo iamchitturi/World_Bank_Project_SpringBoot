@@ -55,7 +55,9 @@ window.addEventListener('load',()=>{window.history.replaceState(null,null,window
 function route(){
   const h=window.location.hash.slice(1);
   const R={'':pgHome,home:pgHome,login:pgLogin,register:pgRegister,dashboard:pgDash,accounts:pgAccounts,cards:pgCards,transfer:pgTransfer,history:pgHistory,allaccounts:pgAllAccounts,audit:pgAudit,reports:pgReports};
-  (R[h]||pgHome)();
+  const target=Object.prototype.hasOwnProperty.call(R,h)?R[h]:pgHome;
+  if(typeof target==='function') target();
+  else pgHome();
 }
 async function logout(){try{navigator.sendBeacon(API+'/auth/logout');}catch(e){}logoutLocally(true);}
 function logoutLocally(goHome=false){user=null;accounts=[];cards=[];clearTimeout(inactivityTimer);isTimedOut=false;if(goHome){window.history.replaceState(null,null,window.location.pathname);route();}else nav('login');}
