@@ -36,10 +36,17 @@ jobs:
       - name: Make wrapper executable
         run: chmod +x mvnw
 
-      - name: Run tests
+      - name: Run tests with coverage
         env:
           DB_URL: jdbc:mysql://127.0.0.1:3306/bank_db?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC
           DB_USERNAME: root
           DB_PASSWORD: secret
           JWT_SECRET: ci-test-jwt-secret-key-only-used-for-automated-tests
-        run: ./mvnw test
+        run: ./mvnw test jacoco:report
+
+      - name: Upload coverage report
+        uses: actions/upload-artifact@v4
+        with:
+          name: jacoco-report
+          path: target/site/jacoco/
+

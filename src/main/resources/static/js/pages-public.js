@@ -136,14 +136,34 @@ function pgRegister(){
     <div class="w-full max-w-md bg-surface-container-lowest rounded-xl shadow-soft p-8 border border-outline-variant/50">
       <div class="mb-8 text-center"><div class="inline-flex items-center justify-center w-12 h-12 bg-primary-container text-on-primary-container rounded-full mb-4"><span class="material-symbols-outlined" style="font-variation-settings:'FILL' 1;font-size:24px">person_add</span></div><h1 class="text-2xl font-semibold text-primary">Create Account</h1><p class="text-sm text-on-surface-variant mt-2">Register for WorldBank NetBanking.</p></div>
       <form id="regForm" class="space-y-5">
-        <div><label class="block text-xs font-semibold text-on-surface mb-2">Full Name</label><input class="w-full px-4 py-3 bg-surface border border-outline-variant rounded text-sm focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary" id="nm" type="text" required/></div>
-        <div><label class="block text-xs font-semibold text-on-surface mb-2">Email ID</label><input class="w-full px-4 py-3 bg-surface border border-outline-variant rounded text-sm focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary" id="em" type="email" required/></div>
-        <div><label class="block text-xs font-semibold text-on-surface mb-2">Password</label><input class="w-full px-4 py-3 bg-surface border border-outline-variant rounded text-sm focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary" id="pw" type="password" required/></div>
+        <div><label class="block text-xs font-semibold text-on-surface mb-2">Full Name</label><div class="relative"><span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-outline text-[20px]">badge</span><input class="w-full pl-10 pr-4 py-3 bg-surface border border-outline-variant rounded text-sm focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary" id="nm" type="text" placeholder="Enter your full name" required/></div></div>
+        <div><label class="block text-xs font-semibold text-on-surface mb-2">Email ID</label><div class="relative"><span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-outline text-[20px]">mail</span><input class="w-full pl-10 pr-4 py-3 bg-surface border border-outline-variant rounded text-sm focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary" id="em" type="email" placeholder="Enter your email address" required/></div></div>
+        <div>
+          <label class="block text-xs font-semibold text-on-surface mb-2">Password</label>
+          <div class="relative"><span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-outline text-[20px]">key</span><input class="w-full pl-10 pr-4 py-3 bg-surface border border-outline-variant rounded text-sm focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary" id="pw" type="password" placeholder="Create a strong password" required/></div>
+          <div class="mt-2 hidden" id="pwStrengthBox"><div class="flex justify-between items-center mb-1"><span class="text-[10px] uppercase font-bold text-outline tracking-wider">Password Strength</span><span id="pwText" class="text-[10px] font-bold"></span></div><div class="w-full bg-surface-container-high h-1.5 rounded-full overflow-hidden"><div id="pwBar" class="h-full w-0 transition-all duration-300"></div></div></div>
+        </div>
+        <div>
+          <label class="block text-xs font-semibold text-on-surface mb-2">Confirm Password</label>
+          <div class="relative"><span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-outline text-[20px]">lock_reset</span><input class="w-full pl-10 pr-4 py-3 bg-surface border border-outline-variant rounded text-sm focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary" id="pw2" type="password" placeholder="Re-enter your password" required/></div>
+        </div>
         <div class="bg-surface-container-low p-3 rounded-lg border border-outline-variant"><span class="text-sm">Verify: <strong>${cap.q}</strong> = </span><input type="number" id="cap" class="w-16 py-1 px-2 border border-outline-variant rounded text-sm text-center" required/></div>
         <button type="submit" class="btn-login w-full bg-secondary text-on-secondary py-3 rounded text-xs font-semibold uppercase tracking-wide">Register</button>
       </form>
       <p class="mt-6 text-center text-sm text-on-surface-variant">Already registered? <a class="text-primary font-semibold hover:underline" href="#login">Login Here</a></p>
     </div>
   </div>`;
-  document.getElementById('regForm').onsubmit=async e=>{e.preventDefault();if(parseInt(document.getElementById('cap').value)!==cap.a){toast('Invalid captcha','error');return;}try{await api('/auth/register',{method:'POST',body:JSON.stringify({name:document.getElementById('nm').value,email:document.getElementById('em').value,password:document.getElementById('pw').value})});toast('Registration successful!','success');nav('login');}catch(err){toast(err.message,'error');}};
+  document.getElementById('pw').addEventListener('input', e => {
+    const p = e.target.value, box = document.getElementById('pwStrengthBox');
+    if(!p) { box.classList.add('hidden'); return; }
+    box.classList.remove('hidden');
+    let s = 0; if(p.length>=8) s+=25; if(/[A-Z]/.test(p)) s+=25; if(/[0-9]/.test(p)) s+=25; if(/[^A-Za-z0-9]/.test(p)) s+=25;
+    const bar = document.getElementById('pwBar'), txt = document.getElementById('pwText');
+    bar.style.width = s + '%';
+    if(s<=25) { bar.className='h-full transition-all duration-300 bg-error'; txt.innerText='Weak'; txt.className='text-[10px] font-bold text-error'; }
+    else if(s<=50) { bar.className='h-full transition-all duration-300 bg-yellow-500'; txt.innerText='Fair'; txt.className='text-[10px] font-bold text-yellow-500'; }
+    else if(s<=75) { bar.className='h-full transition-all duration-300 bg-blue-500'; txt.innerText='Good'; txt.className='text-[10px] font-bold text-blue-500'; }
+    else { bar.className='h-full transition-all duration-300 bg-green-500'; txt.innerText='Strong'; txt.className='text-[10px] font-bold text-green-500'; }
+  });
+  document.getElementById('regForm').onsubmit=async e=>{e.preventDefault();const pw=document.getElementById('pw').value,pw2=document.getElementById('pw2').value;if(pw!==pw2){toast('Passwords do not match','error');return;}if(parseInt(document.getElementById('cap').value)!==cap.a){toast('Invalid captcha','error');return;}try{await api('/auth/register',{method:'POST',body:JSON.stringify({name:document.getElementById('nm').value,email:document.getElementById('em').value,password:pw})});toast('Registration successful!','success');nav('login');}catch(err){toast(err.message,'error');}};
 }

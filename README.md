@@ -1,4 +1,15 @@
-# World Bank Project - Spring Boot
+# TrustBank Project - Spring Boot
+
+## 📚 Documentation
+We have comprehensive documentation available in the `docs/` folder:
+- [Architecture & Diagrams](docs/ARCHITECTURE.md)
+- [Database Schema](docs/SCHEMA.md)
+- [Feature Breakdown](docs/FEATURES.md)
+- [API Documentation](docs/API.md)
+- [Local Setup Guide](docs/SETUP.md)
+- [Deployment Guide (Docker & Render)](docs/DEPLOYMENT.md)
+
+---
 
 ## Postman quick start
 
