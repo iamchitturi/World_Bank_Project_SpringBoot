@@ -56,7 +56,7 @@ public class AuthController {
 
         jakarta.servlet.http.Cookie cookie = new jakarta.servlet.http.Cookie("jwt", token);
         cookie.setHttpOnly(true);
-        cookie.setSecure(false); // Should be true in production with HTTPS
+        cookie.setSecure(true);
         cookie.setPath("/");
         cookie.setMaxAge(3600); // 1 hour
         response.addCookie(cookie);
@@ -118,7 +118,7 @@ public class AuthController {
     public ApiResponse<String> logout(jakarta.servlet.http.HttpServletResponse response) {
         jakarta.servlet.http.Cookie cookie = new jakarta.servlet.http.Cookie("jwt", null);
         cookie.setHttpOnly(true);
-        cookie.setSecure(false); // Should be true in prod
+        cookie.setSecure(true);
         cookie.setPath("/");
         cookie.setMaxAge(0); // Delete immediately
         response.addCookie(cookie);
