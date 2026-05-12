@@ -10,4 +10,4 @@ RUN ./mvnw clean package -DskipTests
 
 EXPOSE 8080
 
-CMD ["java", "-jar", "target/World_Bank_Project_SpringBoot-0.0.1-SNAPSHOT.jar"]
+CMD ["java", "-jar", "target/BANKING-0.0.1-SNAPSHOT.jar"]
