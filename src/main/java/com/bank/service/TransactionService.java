@@ -42,6 +42,12 @@ public class TransactionService {
         this.eventProducer = eventProducer;
     }
 
+    @Caching(evict = {
+            @CacheEvict(value = "accounts", key = "#fromAcc"),
+            @CacheEvict(value = "accounts", key = "#toAcc"),
+            @CacheEvict(value = "userAccounts", allEntries = true),
+            @CacheEvict(value = "reports", allEntries = true)
+    })
     @Transactional(isolation = Isolation.REPEATABLE_READ)
     public String transfer(String fromAcc, String toAcc, BigDecimal amount, String requestId) {
 

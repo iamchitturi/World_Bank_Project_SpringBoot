@@ -289,9 +289,14 @@ public class AccountService {
         return "Account deleted successfully";
     }
 
+    @Caching(evict = {
+            @CacheEvict(value = "accounts", key = "#accountNumber"),
+            @CacheEvict(value = "userAccounts", allEntries = true)
+    })
     @Transactional
     public Account updateAccount(String accountNumber, Account updatedAccount) {
-        Account acc = getAccount(accountNumber);
+        Account acc = accountRepository.findByAccountNumber(accountNumber)
+                .orElseThrow(() -> new ResourceNotFoundException("Account not found: " + accountNumber));
         acc.setName(updatedAccount.getName());
         return accountRepository.save(acc);
     }
